@@ -5,12 +5,22 @@
 #include <sourcemod>
 #include <sdkhooks>
 
-#define PLUGIN_VERSION "1.0"
+#define PLUGIN_VERSION "1.1"
 
-ConVar ConVars[8] = {null, ...};
-ConVar fConvar = null;
-int gEnabled, gShake, fValue, gCritical;
+//	v.1.1 Changes
+//	Fixed issue with multiple black holes having issue with each other
+//	Fixed issue with black holes still pulling players even though the particles disapeared
+//	Change the shaking effect to usermessages instead of faking client commands
+//	Added !setbh which will set the blackhole teleport end location to where your standing, blackholes no longer do damage
+//	Added !resetbh which will clear the blackhole teleport end location and blackholes will start doing damage
+//	Added sm_blackhole_ff which if set to 1 will effect teammates
+//	For consistency, sm_blackhole_damage_radius was renamed to sm_blackhole_inner_radius
+
+ConVar ConVars[9] = {null, ...};
+int gEnabled, gShake, gfValue, gCritical;
 float gRadius, gForce, gDamage, gDRadius, gDuration;
+int gTeleport[MAXPLAYERS+1];
+float gPos[MAXPLAYERS+1][3];
 
 int gBlackHole[MAXPLAYERS+1];
 
@@ -30,10 +40,11 @@ public void OnPluginStart()
 	ConVars[1] = CreateConVar("sm_blackhole_radius", "150", "Radius of pull.");
 	ConVars[2] = CreateConVar("sm_blackhole_pullforce", "200", "What should the pull force be?");
 	ConVars[3] = CreateConVar("sm_blackhole_damage", "50", "How much damage should the blackholes do per second?");
-	ConVars[4] = CreateConVar("sm_blackhole_damage_radius", "80", "How close player is before doing damage?");
+	ConVars[4] = CreateConVar("sm_blackhole_inner_radius", "80", "How close player is before doing damage/teleported them?");
 	ConVars[5] = CreateConVar("sm_blackhole_duration", "3.0", "How long does the black hole last?");
 	ConVars[6] = CreateConVar("sm_blackhole_shake", "1", "When players are in radius of the black hole, their screens will shake.");
 	ConVars[7] = CreateConVar("sm_blackhole_critical", "0", "If set to 1, black hole rockets are only created on critical shots.");
+	ConVars[8] = CreateConVar("sm_blackhole_ff", "0", "If set to 1, black hole rockets will effect teammates.");
 	
 	RegAdminCmd("sm_blackhole", Command_BlackHole, ADMFLAG_GENERIC, "[SM] Turn on Black Hole rockets for anyone.");
 	RegAdminCmd("sm_bh", 		Command_BlackHole, ADMFLAG_GENERIC, "[SM] Turn on Black Hole rockets for anyone.");
@@ -41,11 +52,11 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_blackholeme", Command_BlackHoleMe, "Turn on black hole rockets for yourself.");
 	RegConsoleCmd("sm_bhme", 		Command_BlackHoleMe, "Turn on black hole rockets for yourself.");
 	
-	fConvar = FindConVar("mp_friendlyfire");
+	RegConsoleCmd("sm_setbh", 		Command_SetBlackHole, "Set the end point location for blackhole, blackhole will teleport instead of doing damage.");
+	RegConsoleCmd("sm_resetbh", 	Command_ResetBlackHole, "Reset the end point location for blackhole, blackhole will start doing damage.");
 	
-	for(int i = 0; i < 8; i++)
+	for(int i = 0; i < 9; i++)
 		ConVars[i].AddChangeHook(OnConvarChanged);
-	fConvar.AddChangeHook(OnConvarChanged);
 	
 	AutoExecConfig(false, "blackhole");  
 }
@@ -60,7 +71,7 @@ public void OnConfigsExecuted()
 	gDuration	= GetConVarFloat(ConVars[5]);
 	gShake		= !!GetConVarInt(ConVars[6]);
 	gCritical	= GetConVarInt(ConVars[7]);
-	fValue 		= GetConVarInt(fConvar);
+	gfValue 	= GetConVarInt(ConVars[8]);
 }
 
 public void OnConvarChanged(Handle convar, char[] oldValue, char[] newValue) 
@@ -86,8 +97,8 @@ public void OnConvarChanged(Handle convar, char[] oldValue, char[] newValue)
 		gShake = !!RoundFloat(iNewValue);
 	else if(convar == ConVars[7])
 		gCritical = !!RoundFloat(iNewValue);
-	else if(convar == fConvar)
-		fValue = !!RoundFloat(iNewValue);
+	else if(convar == ConVars[8])
+		gfValue = !!RoundFloat(iNewValue);
 }
 
 public void OnClientPostAdminCheck(int client)
@@ -170,6 +181,41 @@ public Action Command_BlackHoleMe(int client, int args)
 	return Plugin_Handled;
 }
 
+public Action Command_SetBlackHole(int client, int args)
+{
+	if(!gEnabled)
+	{
+		CReplyToCommand(client, "{yellow}[SM]{default} This plugin is disabled.");
+		return Plugin_Handled;
+	}
+	if(!IsClientInGame(client))
+	{
+		ReplyToCommand(client, "[SM] You must be in game to use this command.");
+		return Plugin_Handled;
+	}
+	GetClientAbsOrigin(client, gPos[client]);
+	gTeleport[client] = 1;
+	CReplyToCommand(client, "{yellow}[SM] {default}Your blackholes no longer do damage and will teleport to this location. \nType !resetbh to undo.");
+	return Plugin_Handled;
+}
+
+public Action Command_ResetBlackHole(int client, int args)
+{
+	if(!gEnabled)
+	{
+		CReplyToCommand(client, "{yellow}[SM]{default} This plugin is disabled.");
+		return Plugin_Handled;
+	}
+	if(!IsClientInGame(client))
+	{
+		ReplyToCommand(client, "[SM] You must be in game to use this command.");
+		return Plugin_Handled;
+	}
+	gTeleport[client] = 0;
+	CReplyToCommand(client, "{yellow}[SM] {default}Your blackholes will no longer teleport and will do damage. \nType !setbh to undo.");
+	return Plugin_Handled;
+}
+
 public void OnEntityCreated(int entity, const char[] classname)
 {
 	if(StrEqual(classname,"tf_projectile_rocket"))
@@ -207,6 +253,7 @@ public Action OnEntityTouch(int entity, int other)
 	
 	DataPack pPack;
 	CreateDataTimer(0.1, Timer_Pull, pPack, TIMER_FLAG_NO_MAPCHANGE|TIMER_REPEAT);
+	pPack.WriteCell(0.0);
 	pPack.WriteCell(pos[0]);
 	pPack.WriteCell(pos[1]);
 	pPack.WriteCell(pos[2]);
@@ -218,19 +265,22 @@ public Action OnEntityTouch(int entity, int other)
 public Action Timer_Pull(Handle timer, DataPack pack)
 {
 	pack.Reset();
+	float time = pack.ReadCell();
+	if(time >= gDuration)
+	{
+		pack.Reset();
+		pack.WriteCell(0.0);
+		return Plugin_Stop;
+	}
+	pack.Reset();
+	pack.WriteCell(time+0.1);
+	
 	float pos[3];
 	pos[0] = pack.ReadCell();
 	pos[1] = pack.ReadCell();
 	pos[2] = pack.ReadCell();
 	int attacker = GetClientOfUserId(pack.ReadCell());
 	
-	static float time = 0.1;
-	if(time >= gDuration)
-	{
-		time = 0.1;
-		return Plugin_Stop;
-	}
-	time += 0.1;
 	for(int i = 1; i <= MaxClients; i++) 
 	{
 		if(!IsClientInGame(i) || !IsPlayerAlive(i)) 
@@ -240,9 +290,8 @@ public Action Timer_Pull(Handle timer, DataPack pack)
 		float Distance = GetVectorDistance(pos, cpos);
 		if(attacker == i)
 			continue;
-		if(!fValue && TF2_GetClientTeam(i) == TF2_GetClientTeam(attacker)) {
+		if(!gfValue && TF2_GetClientTeam(i) == TF2_GetClientTeam(attacker))
 			continue;
-		}
 		if(Distance <= gRadius) 
 		{
 			float velocity[3];
@@ -252,15 +301,15 @@ public Action Timer_Pull(Handle timer, DataPack pack)
 			TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, velocity);
 			
 			if(gShake) 
-			{
-				int flags = GetCommandFlags("shake"); 
-				SetCommandFlags("shake", flags & ~FCVAR_CHEAT);
-				FakeClientCommand(i, "shake");	
-				SetCommandFlags("shake", flags | FCVAR_CHEAT);
-			}
+				ShakeScreen(i, 20.0, 0.1, 0.7);
 		}
 		if(Distance <= gDRadius)
 		{
+			if(gTeleport[attacker])
+			{
+				TeleportEntity(i, gPos[attacker], NULL_VECTOR, NULL_VECTOR);
+				return Plugin_Continue;
+			}
 			SDKHooks_TakeDamage(i, attacker, attacker, gDamage, DMG_REMOVENORAGDOLL); //dmg_removenoragdoll dont work?
 			if(!IsPlayerAlive(i))
 			{
@@ -293,3 +342,16 @@ public void SetEntitySelfDestruct(int entity)
 	AcceptEntityInput(entity, "AddOutput"); 
 	AcceptEntityInput(entity, "FireUser1");
 }
+
+public void ShakeScreen(int client, float intensity, float duration, float frequency)
+{
+	Handle bf; 
+	if((bf = StartMessageOne("Shake", client)) != null)
+	{
+		BfWriteByte(bf, 0);
+		BfWriteFloat(bf, intensity);
+		BfWriteFloat(bf, duration);
+		BfWriteFloat(bf, frequency);
+		EndMessage();
+	}
+}  
