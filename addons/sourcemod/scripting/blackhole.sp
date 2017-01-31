@@ -121,7 +121,7 @@ public Action Command_BlackHoleMe(int client, int args)
 		CReplyToCommand(client, "{yellow}[SM]{default} This plugin is disabled.");
 		return Plugin_Handled;
 	}
-	if (!(1 <= client <= MaxClients) || !IsClientInGame(client))
+	if (!client || !IsClientInGame(client))
 	{
 		ReplyToCommand(client, "[SM] You must be in game to use this command.");
 		return Plugin_Handled;
@@ -138,7 +138,7 @@ public Action Command_SetBlackHole(int client, int args)
 		CReplyToCommand(client, "{yellow}[SM]{default} This plugin is disabled.");
 		return Plugin_Handled;
 	}
-	if (!(1 <= client <= MaxClients) || !IsClientInGame(client))
+	if (!client || !IsClientInGame(client))
 	{
 		ReplyToCommand(client, "[SM] You must be in game to use this command.");
 		return Plugin_Handled;
@@ -156,7 +156,7 @@ public Action Command_ResetBlackHole(int client, int args)
 		CReplyToCommand(client, "{yellow}[SM]{default} This plugin is disabled.");
 		return Plugin_Handled;
 	}
-	if (!(1 <= client <= MaxClients) || !IsClientInGame(client))
+	if (!client || !IsClientInGame(client))
 	{
 		ReplyToCommand(client, "[SM] You must be in game to use this command.");
 		return Plugin_Handled;
