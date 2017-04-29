@@ -42,7 +42,7 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	CreateConVar("sm_blackhole_version", "1.0", PLUGIN_VERSION, FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
+	CreateConVar("sm_blackhole_version", "1.0", PLUGIN_VERSION, FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	g_cEnabled = CreateConVar("sm_blackhole_enabled", "1", "Enables/Disables Black hole rockets.");
 	g_cRadius = CreateConVar("sm_blackhole_radius", "150.0", "Radius of pull.");
 	g_cIRadius = CreateConVar("sm_blackhole_inner_radius", "80.0", "How close player is before doing damage/teleported them?");
@@ -53,8 +53,8 @@ public void OnPluginStart()
 	g_cCritical = CreateConVar("sm_blackhole_critical", "0", "If set to 1, black hole rockets are only created on critical shots.");
 	g_cFriendly = CreateConVar("sm_blackhole_ff", "0", "If set to 1, black hole rockets will effect teammates.");
 	
-	RegAdminCmd("sm_blackhole", Command_BlackHole, ADMFLAG_GENERIC, "[SM] Turn on Black Hole rockets for anyone.");
-	RegAdminCmd("sm_bh", Command_BlackHole, ADMFLAG_GENERIC, "[SM] Turn on Black Hole rockets for anyone.");
+	RegAdminCmd("sm_blackhole", Command_BlackHole, ADMFLAG_GENERIC, "Turn on Black Hole rockets for anyone.");
+	RegAdminCmd("sm_bh", Command_BlackHole, ADMFLAG_GENERIC, "Turn on Black Hole rockets for anyone.");
 	
 	RegConsoleCmd("sm_blackholeme", Command_BlackHoleMe, "Turn on black hole rockets for yourself.");
 	RegConsoleCmd("sm_bhme", Command_BlackHoleMe, "Turn on black hole rockets for yourself.");
@@ -62,7 +62,7 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_setbh", Command_SetBlackHole, "Set the end point location for blackhole, blackhole will teleport instead of doing damage.");
 	RegConsoleCmd("sm_resetbh", Command_ResetBlackHole, "Reset the end point location for blackhole, blackhole will start doing damage.");
 	
-	AutoExecConfig(false, "blackhole");  
+	AutoExecConfig(true, "blackhole");  
 }
 
 public void OnClientPostAdminCheck(int client)
