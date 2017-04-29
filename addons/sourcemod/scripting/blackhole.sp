@@ -1,20 +1,29 @@
+/*  TF2 Black Hole Rockets
+ *
+ *  Copyright (C) 2017 Calvin Lee (Chaosxk)
+ * 
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) 
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT 
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with 
+ * this program. If not, see http://www.gnu.org/licenses/.
+ */
+ 
 #pragma semicolon 1
-#include <morecolors>
-#include <tf2_stocks>
-#pragma newdecls required
+
 #include <sourcemod>
 #include <sdkhooks>
+#include <morecolors>
+#include <tf2_stocks>
 
 #define PLUGIN_VERSION "1.2"
-
-/*
- - Version 1.2
- - No longer manually caching convar values, convar values are already cached
- - Uses GetEngineTime to end a timer instead of tracking the timer with a variable
- - For some reason i had DataPack WriteCell() on a float value, switched to WriteFloat()
- - Fixed Client 0 is invalid error for sm_blackhole/sm_bh
- - Console can no longer use sm_blackholeme/sm_bhme/sm_setbh/sm_resetbh
-*/
+#pragma newdecls required
 
 ConVar g_cEnabled, g_cRadius, g_cIRadius, g_cForce, g_cDamage, g_cDuration, g_cShake, g_cCritical, g_cFriendly;
 
@@ -28,7 +37,7 @@ public Plugin myinfo =
 	author = "Tak (Chaosxk)",
 	description = "Creates a black hole on rocket detonation.",
 	version = PLUGIN_VERSION,
-	url = "https://forums.alliedmods.net/showthread.php?p=2399726"
+	url = "https://github.com/xcalvinsz/blackhole"
 }
 
 public void OnPluginStart()
